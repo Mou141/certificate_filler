@@ -14,7 +14,7 @@
             <label for="csv_input">Select a CSV or Spreadsheet File:</label>
         </td>
         <td class="form_cell">
-            <InputFile id="csv_input" OnChange="OnCsvFileSelected" accept=".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+            <InputFile @ref="csvInputFile" id="csv_input" OnChange="OnCsvFileSelected" accept=".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
         </td>
     </tr>
     <tr>
@@ -66,9 +66,14 @@
    </div>
 }
 
+<button @onclick="clearAll">Clear</button>
+
 @code {
     private const string pageTitle = "Certificate Filler";
+
+    private InputFile? csvInputFile;
     private SheetJsInterop? sheetJsInterop;
+    private UtilsInterop? utilsInterop;
 
     private string? statusMessage = null;
     private string statusCssClass = "";
@@ -118,6 +123,7 @@
     protected override void OnInitialized()
     {
         sheetJsInterop = new SheetJsInterop(JS);
+        utilsInterop = new UtilsInterop(JS);
     }
 
     public async ValueTask DisposeAsync()
@@ -126,6 +132,12 @@
         {
             await sheetJsInterop.DisposeAsync();
             sheetJsInterop = null;
+        }
+
+        if (utilsInterop != null)
+        {
+            await utilsInterop.DisposeAsync();
+            utilsInterop = null;
         }
     }
 
@@ -182,5 +194,15 @@
         }
 
         displaySuccessMessage("CSV/Spreadsheet file processed successfully.");
+    }
+
+    private async void clearAll()
+    {
+        clearStatusMessage();
+
+        jsonResult = null;
+        headers.Clear();
+
+        await utilsInterop!.ClearInputFileAsync(csvInputFile);
     }
 }
