@@ -22,7 +22,7 @@
             <label for="pdf_input">Select a PDF Template File:</label>
         </td>
         <td class="form_cell">
-            <InputFile id="pdf_input" accept=".pdf" />
+            <InputFile @ref="pdfInputFile" id="pdf_input" accept=".pdf" />
         </td>
     </tr>
     <tr>
@@ -72,6 +72,7 @@
     private const string pageTitle = "Certificate Filler";
 
     private InputFile? csvInputFile;
+    private InputFile? pdfInputFile;
     private SheetJsInterop? sheetJsInterop;
     private UtilsInterop? utilsInterop;
 
@@ -204,5 +205,6 @@
         headers.Clear();
 
         await utilsInterop!.ClearInputFileAsync(csvInputFile);
+        await utilsInterop!.ClearInputFileAsync(pdfInputFile);
     }
 }
