@@ -1,0 +1,186 @@
+﻿@page "/"
+@inject IJSRuntime JS
+@using System.Text.Json;
+
+<PageTitle>@pageTitle</PageTitle>
+
+<h1>@pageTitle</h1>
+
+<p>This app accepts a PDF file containing form fields and fills it based on data provided as CSV or a spreadsheet file.</p>
+
+<table>
+    <tr>
+        <td class="form_cell">
+            <label for="csv_input">Select a CSV or Spreadsheet File:</label>
+        </td>
+        <td class="form_cell">
+            <InputFile id="csv_input" OnChange="OnCsvFileSelected" accept=".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        </td>
+    </tr>
+    <tr>
+        <td class="form_cell">
+            <label for="pdf_input">Select a PDF Template File:</label>
+        </td>
+        <td class="form_cell">
+            <InputFile id="pdf_input" accept=".pdf" />
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2">
+            @if (!string.IsNullOrEmpty(statusMessage))
+            {
+                <div class="@statusCssClass">@statusMessage</div>
+            }
+        </td>
+    </tr>
+</table>
+
+@if (jsonResult != null && jsonResult.Length > 0)
+{
+    <div id="data_display">
+        <h2>Loaded Data</h2>
+
+        <table class="data_table">
+                <thead>
+                    <tr>
+                        @foreach (var header in headers)
+                        {
+                            <th class="data_header data_cell">@header</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in jsonResult)
+                    {
+                        <tr>
+                            @foreach (var header in headers)
+                            {
+                                <td class="data_value data_cell">
+                                    @GetPropertyValue(item, header)
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+        </table>
+   </div>
+}
+
+@code {
+    private const string pageTitle = "Certificate Filler";
+    private SheetJsInterop? sheetJsInterop;
+
+    private string? statusMessage = null;
+    private string statusCssClass = "";
+
+    private JsonElement[]? jsonResult = null;
+    private List<String> headers = new List<string>();
+
+    private void setJsonData(JsonElement[] data)
+    {
+        jsonResult = data;
+
+        if (jsonResult == null || jsonResult.Length == 0)
+        {
+            headers.Clear();
+            return;
+        }
+
+        var headerSet = new HashSet<string>();
+
+        foreach (var item in jsonResult)
+        {
+            foreach (var property in item.EnumerateObject())
+            {
+                headerSet.Add(property.Name);
+            }
+        }
+
+        headers = headerSet.ToList();
+    }
+
+    private string? GetPropertyValue(JsonElement item, string propertyName)
+    {
+        if (item.TryGetProperty(propertyName, out var prop))
+        {
+            return prop.ValueKind switch
+            {
+                JsonValueKind.String => prop.GetString(),
+                JsonValueKind.Number => prop.GetRawText(),
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                _ => prop.GetRawText(),
+            };
+        }
+        return null;
+    }
+
+    protected override void OnInitialized()
+    {
+        sheetJsInterop = new SheetJsInterop(JS);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (sheetJsInterop != null)
+        {
+            await sheetJsInterop.DisposeAsync();
+            sheetJsInterop = null;
+        }
+    }
+
+    private void displayStatusMessage(string message)
+    {
+        statusMessage = message;
+        statusCssClass = "message_class";
+        StateHasChanged();
+    }
+
+    private void displayErrorMessage(string message)
+    {
+        statusMessage = message;
+        statusCssClass = "error_class";
+        StateHasChanged();
+    }
+
+    private void displaySuccessMessage(string message)
+    {
+        statusMessage = message;
+        statusCssClass = "success_class";
+        StateHasChanged();
+    }
+
+    private void clearStatusMessage()
+    {
+        statusMessage = null;
+        statusCssClass = "";
+        StateHasChanged();
+    }
+
+    private async Task OnCsvFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        displayStatusMessage("Processing CSV/Spreadsheet file...");
+
+        try {
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10 MB limit
+            using var ms = new MemoryStream();
+
+            await stream.CopyToAsync(ms);
+
+            var bytes = ms.ToArray();
+
+            var data = await sheetJsInterop!.ParseFileAsync(bytes);
+
+            setJsonData(data);
+
+        } catch (Exception ex)
+        {
+            displayErrorMessage($"Error processing file: {ex.Message}");
+            return;
+        }
+
+        displaySuccessMessage("CSV/Spreadsheet file processed successfully.");
+    }
+}
