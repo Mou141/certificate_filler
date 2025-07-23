@@ -22,7 +22,7 @@
             <label for="pdf_input">Select a PDF Template File:</label>
         </td>
         <td class="form_cell">
-            <InputFile @ref="pdfInputFile" id="pdf_input" accept=".pdf" />
+            <InputFile @ref="pdfInputFile" id="pdf_input" OnChange="OnPdfFileSelected" accept=".pdf" />
         </td>
     </tr>
     <tr>
@@ -73,14 +73,18 @@
 
     private InputFile? csvInputFile;
     private InputFile? pdfInputFile;
+
     private SheetJsInterop? sheetJsInterop;
     private UtilsInterop? utilsInterop;
+    private PdfInterop? pdfInterop;
 
     private string? statusMessage = null;
     private string statusCssClass = "";
 
     private JsonElement[]? jsonResult = null;
     private List<String> headers = new List<string>();
+
+    private string? pdf_handle = null;
 
     private void setJsonData(JsonElement[] data)
     {
@@ -125,6 +129,7 @@
     {
         sheetJsInterop = new SheetJsInterop(JS);
         utilsInterop = new UtilsInterop(JS);
+        pdfInterop = new PdfInterop(JS);
     }
 
     public async ValueTask DisposeAsync()
@@ -139,6 +144,12 @@
         {
             await utilsInterop.DisposeAsync();
             utilsInterop = null;
+        }
+
+        if (pdfInterop != null)
+        {
+            await pdfInterop.DisposeAsync();
+            pdfInterop = null;
         }
     }
 
@@ -206,5 +217,32 @@
 
         await utilsInterop!.ClearInputFileAsync(csvInputFile);
         await utilsInterop!.ClearInputFileAsync(pdfInputFile);
+
+        await pdfInterop!.DeletePdfAsync(pdf_handle);
+    }
+
+    private async Task OnPdfFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        displayStatusMessage("Processing PDF file...");
+
+        try {
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10 MB limit
+            using var ms = new MemoryStream();
+
+            await stream.CopyToAsync(ms);
+
+            var bytes = ms.ToArray();
+
+            pdf_handle = await pdfInterop!.LoadPdfAsync(bytes);
+
+        } catch (Exception ex)
+        {
+            displayErrorMessage($"Error processing PDF file: {ex.Message}");
+            return;
+        }
+
+        displaySuccessMessage("PDF file processed successfully.");
     }
 }
