@@ -366,6 +366,7 @@
         }
 
         displayStatusMessage("Generating ZIP file...");
+        StateHasChanged(); // Force UI update to show progress
 
         Dictionary<string, string> pdfData = new Dictionary<string, string>();
 
@@ -415,6 +416,7 @@
             cts = new CancellationTokenSource();
 
             displayStatusMessage("Generating PDFs...");
+            StateHasChanged(); // Force UI update to show progress
 
             int index = 0;
 
@@ -422,11 +424,15 @@
             {
                 cts.Token.ThrowIfCancellationRequested();
                 displayStatusMessage($"Generating PDF {index+1} of {jsonResult.Length}...");
+
+                StateHasChanged(); // Force UI update to show progress
+
                 await GeneratePdf(item, index);
                 index++;
             }
 
             displayStatusMessage("All PDFs generated successfully.");
+            StateHasChanged(); // Force UI update to show final status
 
             cts.Token.ThrowIfCancellationRequested(); // Check for cancellation before generating ZIP file
             await GenerateZipFile();
