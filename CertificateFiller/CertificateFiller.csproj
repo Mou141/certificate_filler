@@ -7,7 +7,7 @@
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
 
     <!-- 👇 Add these lines -->
-  <StaticWebAssetBasePath>certificate_filler</StaticWebAssetBasePath>
+  <BaseHref>certificate_filler</BaseHref>
   <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
   </PropertyGroup>
 
