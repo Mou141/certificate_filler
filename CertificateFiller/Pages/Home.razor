@@ -384,6 +384,7 @@
         }
 
         zipUrl = await pdfInterop!.CreateZipFromPdfsAsync(pdfData);
+        StateHasChanged(); // Force UI update to show ZIP download link
     }
 
     private async Task GenerateAllPDFs()
