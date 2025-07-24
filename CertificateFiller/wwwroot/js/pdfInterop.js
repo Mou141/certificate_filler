@@ -59,3 +59,11 @@ export function deletePdf(id) {
         throw new Error(`PDF with id ${id} does not exist.`);
     }
 }
+
+export function clearAllPdfs() {
+    urlStore.forEach((url) => {
+        URL.revokeObjectURL(url);
+    });
+    urlStore.clear();
+    pdfStore.clear();
+}

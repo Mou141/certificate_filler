@@ -34,6 +34,12 @@ public class PdfInterop : IAsyncDisposable
         return await module.InvokeAsync<string>("getPdfBlobUrl", pdfHandle);
     }
 
+    public async Task ClearAllPdfsAsync()
+    {
+        var module = await _moduleTask.Value;
+        await module.InvokeVoidAsync("clearAllPdfs");
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_moduleTask.IsValueCreated)
