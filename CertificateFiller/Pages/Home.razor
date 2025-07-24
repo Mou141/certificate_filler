@@ -218,7 +218,9 @@
         await utilsInterop!.ClearInputFileAsync(csvInputFile);
         await utilsInterop!.ClearInputFileAsync(pdfInputFile);
 
-        await pdfInterop!.DeletePdfAsync(pdf_handle);
+        await pdfInterop!.ClearAllPdfsAsync();
+
+        pdf_handle = null;
     }
 
     private async Task OnPdfFileSelected(InputFileChangeEventArgs e)
