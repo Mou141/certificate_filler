@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "CertificateFiller",
   "resources": {
-    "hash": "sha256-zFxZVHTRIimAD8BKLBK8yr6n1Ra4M2/+XcHAkmaremM=",
+    "hash": "sha256-bJOBWxlPZp0l00y+mwk41JatOD+C4YK8kM3aVicew0U=",
     "jsModuleNative": {
       "dotnet.native.8.0.18.td341apd3g.js": "sha256-1QpKPnxEuRCElzcp+e3MrovJeAJkuzqKmRQay/6Aa08="
     },
@@ -15,7 +15,7 @@
       "icudt.dat": "sha256-tO5O5YzMTVSaKBboxAqezOQL9ewmupzV2JrB5Rkc8a4="
     },
     "assembly": {
-      "CertificateFiller.wasm": "sha256-+kpUdgjQ2g9Cv+BFpiBa1LTAJX4Ox21k3ieBgP8ZPIk=",
+      "CertificateFiller.wasm": "sha256-YQoRw+4QG/Ca/24tJG5vJaS2u5anBt2AA1egPwU+4cI=",
       "Microsoft.AspNetCore.Components.wasm": "sha256-3xPQJ7kIdw7gVhX5U9Nyrz+GsDuMqxQMQfybN8hBiCk=",
       "Microsoft.AspNetCore.Components.Web.wasm": "sha256-c5pPV8BfhzmtRTWpPJRfoyG0ymc+/EYvJ0GjKvBaKJc=",
       "Microsoft.AspNetCore.Components.WebAssembly.wasm": "sha256-9SbbCPTjNa91/9BiSkOhVcWXsS2sb0LhnR6/uC/D/hg=",
