@@ -22,13 +22,13 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Restore dependencies
-      run: dotnet restore CertificateFIller/CertificateFIller.csproj
+      run: dotnet restore CertificateFiller/CertificateFiller.csproj
 
     - name: Build the app
-      run: dotnet build CertificateFIller/CertificateFIller.csproj --configuration Release
+      run: dotnet build CertificateFiller/CertificateFiller.csproj --configuration Release
 
     - name: Publish the app
-      run: dotnet publish CertificateFIller/CertificateFIller.csproj -c Release -o release
+      run: dotnet publish CertificateFiller/CertificateFiller.csproj -c Release -o release
 
     - name: Add .nojekyll file
       run: touch release/wwwroot/.nojekyll
