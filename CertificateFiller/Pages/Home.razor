@@ -1,6 +1,7 @@
 ﻿@page "/"
 @inject IJSRuntime JS
 @using System.Text.Json;
+@using System.IO;
 
 <PageTitle>@pageTitle</PageTitle>
 
@@ -50,15 +51,22 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in jsonResult)
+                    @foreach (var item in jsonResult.Select((element, index) => new {element, index}))
                     {
                         <tr>
                             @foreach (var header in headers)
                             {
                                 <td class="data_value data_cell">
-                                    @GetPropertyValue(item, header)
+                                    @GetPropertyValue(item.element, header)
                                 </td>
                             }
+
+                            <td class="data_value data_cell">
+                                @if (pdfHandles.ContainsKey(item.index) && pdfNames.ContainsKey(item.index) && pdfUrls.ContainsKey(item.index))
+                                {
+                                    <a href="@pdfUrls[item.index]" target="_blank" download="@pdfNames[item.index]" type="application/pdf">Download PDF</a>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -66,7 +74,23 @@
    </div>
 }
 
-<button @onclick="clearAll">Clear</button>
+<table>
+    <tr>
+        <td class="data_cell">
+            <button @onclick="clearAll">Clear</button>
+        </td>
+        <td class="data_cell">
+            <button @onclick="CancelGeneration" disabled="@(!isGenerating)">Cancel</button>
+        </td>
+        <td class="data_cell">
+            <button @onclick="GenerateAllPDFs" disabled="@(isGenerating || jsonResult == null || jsonResult.Length == 0 || pdfHandles.Count > 0 || pdfNames.Count > 0 || pdfUrls.Count > 0)">Generate PDFs</button>
+        </td>
+        <td class="data_cell">
+            <label for="ignore_extra_fields">Ignore Extra/Missing Fields:</label>
+            <input id="ignore_extra_fields" type="checkbox" @bind="ignoreExtraFields" />
+        </td>
+    </tr>
+</table>
 
 @code {
     private const string pageTitle = "Certificate Filler";
@@ -83,8 +107,16 @@
 
     private JsonElement[]? jsonResult = null;
     private List<String> headers = new List<string>();
+    private Dictionary<int, string> pdfHandles = new Dictionary<int, string>(); // Store PDF handles of the generated PDFs by index
+    private Dictionary<int, string> pdfNames = new Dictionary<int, string>(); // Store PDF names by index
+    private Dictionary<int, string> pdfUrls = new Dictionary<int, string>(); // Store PDF URLs by index
 
     private string? pdf_handle = null;
+
+    private CancellationTokenSource? cts; // For cancelling PDF generation if needed
+    private bool isGenerating = false; // Flag to prevent multiple simultaneous generations
+
+    private bool ignoreExtraFields;
 
     private void setJsonData(JsonElement[] data)
     {
@@ -210,6 +242,7 @@
 
     private async void clearAll()
     {
+        CancelGeneration();
         clearStatusMessage();
 
         jsonResult = null;
@@ -221,6 +254,51 @@
         await pdfInterop!.ClearAllPdfsAsync();
 
         pdf_handle = null;
+        pdfHandles.Clear();
+        pdfNames.Clear();
+        pdfUrls.Clear();
+    }
+
+    private string GetFileNameFromData(JsonElement item, string fallbackValue = "default")
+    {
+        string? baseName = null;
+
+        foreach (var property in item.EnumerateObject())
+        {
+            if (string.Equals(property.Name, "Name", StringComparison.OrdinalIgnoreCase))
+            {
+                string? nameValue = property.Value.GetString();
+
+                if (!string.IsNullOrWhiteSpace(nameValue))
+                {
+                    baseName = nameValue.Trim();
+                    break;
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(baseName))
+        {
+            baseName = fallbackValue.Trim();
+        }
+
+        foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+        {
+            baseName = baseName.Replace(c.ToString(), "_");
+        }
+
+        string fileName = $"{baseName}.pdf";
+        int index = 1;
+
+        HashSet<string> existingNames = new HashSet<string>(pdfNames.Values, StringComparer.OrdinalIgnoreCase); // Ignore case when checking for existing names
+
+        while (existingNames.Contains(fileName))
+        {
+            fileName = $"{baseName}_{index}.pdf";
+            index++;
+        }
+
+        return fileName;
     }
 
     private async Task OnPdfFileSelected(InputFileChangeEventArgs e)
@@ -246,5 +324,82 @@
         }
 
         displaySuccessMessage("PDF file processed successfully.");
+    }
+
+    private async Task GeneratePdf(JsonElement item, int index)
+    {
+        string thisHandle = await pdfInterop!.FillAndFlattenPdfAsync(pdf_handle, item, !ignoreExtraFields);
+        string fileName = GetFileNameFromData(item, thisHandle);
+        string url = await pdfInterop!.GetPdfBlobUrlAsync(thisHandle);
+
+        pdfHandles[index] = thisHandle;
+        pdfNames[index] = fileName;
+        pdfUrls[index] = url;
+    }
+
+    private async Task GenerateAllPDFs()
+    {
+        if (isGenerating)
+        {
+            return; // Prevent multiple simultaneous generations
+        }
+
+        if (pdf_handle == null)
+        {
+            displayErrorMessage("No PDF template file selected.");
+            return;
+        }
+
+        if (jsonResult == null || jsonResult.Length == 0)
+        {
+            displayErrorMessage("No data loaded from CSV/Spreadsheet file.");
+            return;
+        }
+
+        if (pdfHandles.Count > 0 || pdfNames.Count > 0 || pdfUrls.Count > 0)
+        {
+            displayErrorMessage("PDFs already generated. Please clear before generating new PDFs.");
+            return;
+        }
+
+        try {
+            isGenerating = true;
+            cts = new CancellationTokenSource();
+
+            displayStatusMessage("Generating PDFs...");
+
+            int index = 0;
+
+            foreach (var item in jsonResult)
+            {
+                cts.Token.ThrowIfCancellationRequested();
+                displayStatusMessage($"Generating PDF {index+1} of {jsonResult.Length}...");
+                await GeneratePdf(item, index);
+                index++;
+            }
+
+        } catch (OperationCanceledException)
+        {
+            displayErrorMessage("PDF generation cancelled.");
+            return;
+        }
+        catch (Exception ex)
+        {
+            displayErrorMessage($"Error generating PDFs: {ex.Message}");
+            return;
+        }
+        finally
+        {
+            isGenerating = false;
+            cts!.Dispose();
+            cts = null;
+        }
+
+        displaySuccessMessage("All PDFs generated successfully.");
+    }
+
+    private void CancelGeneration()
+    {
+        cts?.Cancel();
     }
 }

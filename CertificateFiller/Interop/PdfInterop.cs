@@ -1,6 +1,5 @@
 using Microsoft.JSInterop;
-using System;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 public class PdfInterop : IAsyncDisposable
 {
@@ -32,6 +31,31 @@ public class PdfInterop : IAsyncDisposable
 
         var module = await _moduleTask.Value;
         return await module.InvokeAsync<string>("getPdfBlobUrl", pdfHandle);
+    }
+
+    public async Task<byte[]> GetPdfBytesAsync(string? pdfHandle)
+    {
+        if (pdfHandle == null) return Array.Empty<byte>();
+
+        var module = await _moduleTask.Value;
+        int[] byteArray = await module.InvokeAsync<int[]>("getPdfBytes", pdfHandle);
+
+        return byteArray.Select(b => (byte)b).ToArray();
+    }
+
+    public async Task<string> FillAndFlattenPdfAsync(string? pdfHandle, JsonElement formData, bool strict = true)
+    {
+        if (string.IsNullOrEmpty(pdfHandle))
+        {
+            throw new ArgumentException("PDF handle cannot be null or empty.", nameof(pdfHandle));
+        }
+
+        var module = await _moduleTask.Value;
+        Dictionary<string, string> formDataDict = formData.EnumerateObject().ToDictionary(prop => prop.Name, prop => prop.Value.GetString() ?? "");
+
+        string newPdfHandle = await module.InvokeAsync<string>("fillAndFlattenPdf", pdfHandle, formDataDict, strict);
+
+        return newPdfHandle;
     }
 
     public async Task ClearAllPdfsAsync()
