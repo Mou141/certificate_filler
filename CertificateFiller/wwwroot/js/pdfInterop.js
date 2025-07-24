@@ -3,10 +3,14 @@
 
 
 import { PDFDocument } from 'https://cdn.skypack.dev/pdf-lib';
+import JSZip from 'https://cdn.skypack.dev/jszip@3.10.1';
+
 
 const pdfStore = new Map();
 const urlStore = new Map();
 const blobStore = new Map();
+
+const zipUrlStore = new Set();
 
 function generateId() {
     return crypto.randomUUID();
@@ -97,9 +101,16 @@ export function clearAllPdfs() {
     urlStore.forEach((url) => {
         URL.revokeObjectURL(url);
     });
+
+    zipUrlStore.forEach((url) => {
+        URL.revokeObjectURL(url);
+    });
+
     urlStore.clear();
     pdfStore.clear();
     blobStore.clear();
+
+    zipUrlStore.clear();
 }
 
 export async function fillAndFlattenPdf(originalId, formData, strict = false) {
@@ -139,4 +150,28 @@ export async function fillAndFlattenPdf(originalId, formData, strict = false) {
     pdfStore.set(id, newPdf);
 
     return id;
+}
+
+export async function createZipFromPdfs(pdfDict) {
+    const zip = new JSZip();
+
+    for (const [name, id] of Object.entries(pdfDict)) {
+        const blob = await getPdfBlob(id);
+
+        zip.file(name, blob);
+    }
+
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const zipUrl = URL.createObjectURL(zipBlob);
+
+    zipUrlStore.add(zipUrl);
+
+    return zipUrl;
+}
+
+export function deleteZipUrl(zipUrl) {
+    if (zipUrlStore.has(zipUrl)) {
+        URL.revokeObjectURL(zipUrl);
+        zipUrlStore.delete(zipUrl);
+    }
 }

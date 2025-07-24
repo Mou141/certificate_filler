@@ -69,6 +69,14 @@
                             </td>
                         </tr>
                     }
+                    @if (!string.IsNullOrEmpty(zipUrl))
+                    {
+                        <tr>
+                            <td colspan="@headers.Count + 1" class="data_value data_header">
+                                <a href="@zipUrl" target="_blank" download="certificates.zip">Download All PDFs as ZIP</a>
+                            </td>
+                        </tr>
+                    }
                 </tbody>
         </table>
    </div>
@@ -117,6 +125,8 @@
     private bool isGenerating = false; // Flag to prevent multiple simultaneous generations
 
     private bool ignoreExtraFields;
+
+    private string? zipUrl = null; // Store the URL of the generated ZIP file
 
     private void setJsonData(JsonElement[] data)
     {
@@ -257,6 +267,8 @@
         pdfHandles.Clear();
         pdfNames.Clear();
         pdfUrls.Clear();
+
+        zipUrl = null;
     }
 
     private string GetFileNameFromData(JsonElement item, string fallbackValue = "default")
@@ -337,6 +349,33 @@
         pdfUrls[index] = url;
     }
 
+    private async Task GenerateZipFile()
+    {
+        if (pdfHandles.Count == 0)
+        {
+            throw new InvalidOperationException("No PDFs generated to create ZIP file.");
+        }
+
+        displayStatusMessage("Generating ZIP file...");
+
+        Dictionary<string, string> pdfData = new Dictionary<string, string>();
+
+        foreach (KeyValuePair<int, string> item in pdfHandles)
+        {
+            var index = item.Key;
+            var handle = item.Value;
+
+            if (!pdfNames.ContainsKey(index))
+            {
+                throw new InvalidOperationException($"PDF name not found for index {index} (handle: {handle}).");
+            }
+
+            pdfData[pdfNames[index]] = handle;
+        }
+
+        zipUrl = await pdfInterop!.CreateZipFromPdfsAsync(pdfData);
+    }
+
     private async Task GenerateAllPDFs()
     {
         if (isGenerating)
@@ -378,6 +417,11 @@
                 index++;
             }
 
+            displayStatusMessage("All PDFs generated successfully.");
+
+            cts.Token.ThrowIfCancellationRequested(); // Check for cancellation before generating ZIP file
+            await GenerateZipFile();
+
         } catch (OperationCanceledException)
         {
             displayErrorMessage("PDF generation cancelled.");
@@ -395,7 +439,7 @@
             cts = null;
         }
 
-        displaySuccessMessage("All PDFs generated successfully.");
+        displaySuccessMessage("PDF generation tasks completed.");
     }
 
     private void CancelGeneration()

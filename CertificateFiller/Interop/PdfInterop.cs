@@ -58,6 +58,28 @@ public class PdfInterop : IAsyncDisposable
         return newPdfHandle;
     }
 
+    public async Task<string> CreateZipFromPdfsAsync(Dictionary<string, string> pdfNamesAndHandles)
+    {
+        if (pdfNamesAndHandles == null || pdfNamesAndHandles.Count == 0)
+        {
+            throw new ArgumentException("PDF names and handles cannot be null or empty.", nameof(pdfNamesAndHandles));
+        }
+
+        var module = await _moduleTask.Value;
+        return await module.InvokeAsync<string>("createZipFromPdfs", pdfNamesAndHandles);
+    }
+
+    public async Task DeleteZipUrlAsync(string zipUrl)
+    {
+        if (string.IsNullOrEmpty(zipUrl))
+        {
+            return;
+        }
+
+        var module = await _moduleTask.Value;
+        await module.InvokeVoidAsync("deleteZipUrl", zipUrl);
+    }
+
     public async Task ClearAllPdfsAsync()
     {
         var module = await _moduleTask.Value;
