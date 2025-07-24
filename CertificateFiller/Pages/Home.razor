@@ -2,6 +2,7 @@
 @inject IJSRuntime JS
 @using System.Text.Json;
 @using System.IO;
+@implements IAsyncDisposable;
 
 <PageTitle>@pageTitle</PageTitle>
 
@@ -172,6 +173,14 @@
         sheetJsInterop = new SheetJsInterop(JS);
         utilsInterop = new UtilsInterop(JS);
         pdfInterop = new PdfInterop(JS);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await pdfInterop!.RegisterUnloadListenerAsync();
+        }
     }
 
     public async ValueTask DisposeAsync()

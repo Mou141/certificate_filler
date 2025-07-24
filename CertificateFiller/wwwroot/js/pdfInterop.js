@@ -113,6 +113,12 @@ export function clearAllPdfs() {
     zipUrlStore.clear();
 }
 
+export function setupUnloadListener() {
+    window.addEventListener('beforeunload', () => {
+        clearAllPdfs();
+    });
+}
+
 export async function fillAndFlattenPdf(originalId, formData, strict = false) {
     if (!pdfStore.has(originalId)) {
         throw new Error(`PDF with id ${originalId} does not exist.`);

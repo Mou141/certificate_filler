@@ -94,4 +94,10 @@ public class PdfInterop : IAsyncDisposable
             await module.DisposeAsync();
         }
     }
+
+    public async Task RegisterUnloadListenerAsync()
+    {
+        var module = await _moduleTask.Value;
+        await module.InvokeVoidAsync("setupUnloadListener");
+    }
 }
