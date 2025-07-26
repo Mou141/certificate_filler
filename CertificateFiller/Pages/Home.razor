@@ -78,6 +78,14 @@
                             </td>
                         </tr>
                     }
+                    @if (!string.IsNullOrEmpty(mergeUrl))
+                    {
+                        <tr>
+                            <td colspan="@headers.Count + 1" class="data_value data_header">
+                                <a href="@mergeUrl" target="_blank" download="merged.pdf">Download Merged PDF</a>
+                            </td>
+                        </tr>
+                    }
                 </tbody>
         </table>
    </div>
@@ -128,6 +136,7 @@
     private bool ignoreExtraFields;
 
     private string? zipUrl = null; // Store the URL of the generated ZIP file
+    private string? mergeUrl = null; // Store the URL of the merged PDF file
 
     private void setJsonData(JsonElement[] data)
     {
@@ -387,6 +396,18 @@
         StateHasChanged(); // Force UI update to show ZIP download link
     }
 
+    private async Task MergePdfs()
+    {
+        displayStatusMessage("Merging PDFs...");
+        StateHasChanged(); // Force UI update to show progress
+
+        string mergedPdfHandle = await pdfInterop!.MergePdfsAsync(pdfHandles.Values.ToList());
+        mergeUrl = await pdfInterop!.GetPdfBlobUrlAsync(mergedPdfHandle);
+
+        displaySuccessMessage("PDFs merged successfully.");
+        StateHasChanged(); // Force UI update to show merged PDF download link
+    }
+
     private async Task GenerateAllPDFs()
     {
         if (isGenerating)
@@ -438,6 +459,9 @@
             cts.Token.ThrowIfCancellationRequested(); // Check for cancellation before generating ZIP file
             await GenerateZipFile();
 
+            cts.Token.ThrowIfCancellationRequested(); // Check for cancellation before merging PDFs
+            await MergePdfs();
+
         } catch (OperationCanceledException)
         {
             displayErrorMessage("PDF generation cancelled.");
@@ -451,7 +475,7 @@
         finally
         {
             isGenerating = false;
-            cts!.Dispose();
+            cts?.Dispose();
             cts = null;
         }
 

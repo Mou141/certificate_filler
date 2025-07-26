@@ -80,6 +80,17 @@ public class PdfInterop : IAsyncDisposable
         await module.InvokeVoidAsync("deleteZipUrl", zipUrl);
     }
 
+    public async Task<string> MergePdfsAsync(List<string> pdfHandles)
+    {
+        if (pdfHandles == null || pdfHandles.Count == 0)
+        {
+            throw new ArgumentException("PDF handles cannot be null or empty.", nameof(pdfHandles));
+        }
+
+        var module = await _moduleTask.Value;
+        return await module.InvokeAsync<string>("mergePdfs", pdfHandles);
+    }
+
     public async Task ClearAllPdfsAsync()
     {
         var module = await _moduleTask.Value;
