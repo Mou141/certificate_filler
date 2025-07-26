@@ -175,6 +175,32 @@ export async function createZipFromPdfs(pdfDict) {
     return zipUrl;
 }
 
+export async function mergePdfs(pdfIds) {
+    if (pdfIds.length === 0) {
+        throw new Error("No PDF IDs provided for merging.");
+    }
+
+    const mergedPdf = await PDFDocument.create();
+
+    for (const id of pdfIds) {
+        if (!pdfStore.has(id)) {
+            throw new Error(`PDF with id ${id} does not exist.`);
+        }
+
+        const pdfDoc = pdfStore.get(id);
+        const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+
+        copiedPages.forEach((page) => {
+            mergedPdf.addPage(page);
+        });
+    }
+
+    const id = generateId();
+    pdfStore.set(id, mergedPdf);
+
+    return id;
+}
+
 export function deleteZipUrl(zipUrl) {
     if (zipUrlStore.has(zipUrl)) {
         URL.revokeObjectURL(zipUrl);
